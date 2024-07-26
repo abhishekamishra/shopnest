@@ -1,19 +1,15 @@
 package com.e_comm.shopnest.entity;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-import lombok.ToString;
+import lombok.*;
 
 import java.util.List;
+import java.util.Set;
 
 @Data
-@NoArgsConstructor
-@AllArgsConstructor
-@ToString
 @Entity
-@Table(name = "category")
+//@Table(name = "category")
+//@ToString(exclude = {"parent"})
 public class Category {
 
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -22,22 +18,10 @@ public class Category {
     private Long id;
 
     @Column(name = "CATEGORY_ID")
-    private String categoryId;
+    private Long categoryId;
 
     @Column(name = "CATEGORY_NAME")
     private String categoryName;
 
-    private Boolean isParent;
-
-    private Boolean isChild;
-
-    private String parentCategory;
-
-    @OneToMany(mappedBy = "category")
-    private List<Category> categories;
-
-    @ManyToOne
-    @JoinColumn(referencedColumnName = "ID")
-    private Category category;
 }
 
