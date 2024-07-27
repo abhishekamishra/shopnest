@@ -19,6 +19,11 @@ import java.util.stream.Collectors;
 import static java.util.stream.Collectors.mapping;
 import static java.util.stream.Collectors.toList;
 
+/***
+ * Category Service implementation class - It contains all the business logic for Category table
+ * @author ABHISHEKA
+ * @version 1.0
+ */
 @Service
 public class CategoryServiceImpl implements CategoryService {
 
@@ -29,11 +34,9 @@ public class CategoryServiceImpl implements CategoryService {
     private CategoryMappingRepository categoryMappingRepository;
 
     @Override
-    public Optional<List<CategoryDTO>> saveCategory(List<CategoryDTO> categoryDTOS) {
+    public Optional<CategoryDTO> saveCategory(CategoryDTO categoryDTO) {
 
-        if (!categoryDTOS.isEmpty()) {
-
-            for (CategoryDTO categoryDTO : categoryDTOS) {
+        if (categoryDTO != null) {
 
                 saveCategoryAndChildCategories(categoryDTO);
 
@@ -43,11 +46,10 @@ public class CategoryServiceImpl implements CategoryService {
                         saveCategoryAndChildCategories(dto);
                     }
                 }
-            }
         } else {
             // throw exception
         }
-        return Optional.ofNullable(categoryDTOS);
+        return Optional.ofNullable(categoryDTO);
     }
 
     @Transactional

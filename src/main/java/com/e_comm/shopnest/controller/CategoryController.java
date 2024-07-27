@@ -38,9 +38,10 @@ public class CategoryController {
             if (categoryDTOs.isPresent()) {
                 responseEntity = ResponseEntity.status(HttpStatus.OK).body(categoryDTOs.get());
             } else {
-                responseEntity = ResponseEntity.status(HttpStatus.NOT_FOUND).body("success");
+                responseEntity = ResponseEntity.status(HttpStatus.NOT_FOUND).body("No data found");
             }
         } catch (Exception exception) {
+            responseEntity = ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(exception.getLocalizedMessage());
         }
 
         return responseEntity;
@@ -51,17 +52,17 @@ public class CategoryController {
      * @return ResponseEntity
      */
     @PostMapping("/v1/save-categories")
-    public ResponseEntity saveCategory(@RequestBody List<CategoryDTO> categoryDTOS) {
+    public ResponseEntity saveCategory(@RequestBody CategoryDTO categoryDTO) {
 
         ResponseEntity responseEntity = null;
 
         try {
-            Optional<List<CategoryDTO>> categoryDTO = categoryService.saveCategory(categoryDTOS);
+            Optional<CategoryDTO> dto = categoryService.saveCategory(categoryDTO);
         /*
             Check duplicate entries
             409 status code
          */
-            responseEntity = ResponseEntity.status(HttpStatus.CREATED).body(categoryDTO.isPresent() ? categoryDTO.get() : "No data saved");
+            responseEntity = ResponseEntity.status(HttpStatus.CREATED).body(dto.isPresent() ? dto.get() : "No data saved");
         } catch (Exception exception) {
         }
         return null;

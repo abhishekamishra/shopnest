@@ -13,7 +13,7 @@ import java.util.Optional;
  */
 public interface CategoryService {
 
-    public Optional<List<CategoryDTO>> saveCategory(List<CategoryDTO> categoryDTOS);
+    public Optional<CategoryDTO> saveCategory(CategoryDTO categoryDTO);
 
     public Optional<List<CategoryDTO>> getCategories();
 
