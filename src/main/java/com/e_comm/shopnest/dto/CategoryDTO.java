@@ -8,6 +8,10 @@ import lombok.EqualsAndHashCode;
 import java.io.Serializable;
 import java.util.Set;
 
+/***
+ * Category DTO class that contains and help to transfer Category Table's data over network
+ * @author ABHISHEKA
+ */
 @Data
 public class CategoryDTO implements Serializable {
 
@@ -17,6 +21,7 @@ public class CategoryDTO implements Serializable {
 
     private String categoryName;
 
+    // stores children data which will create a hierarchical structure
     private Set<CategoryDTO> children;
 
     private Long parentId;

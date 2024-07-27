@@ -6,6 +6,11 @@ import com.e_comm.shopnest.entity.Category;
 import java.util.List;
 import java.util.Optional;
 
+/***
+ * Service interface for Category Entity
+ * @author ABHISHEKA
+ * @version 1.0
+ */
 public interface CategoryService {
 
     public Optional<List<CategoryDTO>> saveCategory(List<CategoryDTO> categoryDTOS);

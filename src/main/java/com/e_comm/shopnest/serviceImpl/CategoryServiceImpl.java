@@ -1,5 +1,6 @@
 package com.e_comm.shopnest.serviceImpl;
 
+import com.e_comm.shopnest.dto.CategoryAndMappingDTO;
 import com.e_comm.shopnest.dto.CategoryAndMappingList;
 import com.e_comm.shopnest.dto.CategoryDTO;
 import com.e_comm.shopnest.entity.Category;
@@ -28,23 +29,19 @@ public class CategoryServiceImpl implements CategoryService {
     private CategoryMappingRepository categoryMappingRepository;
 
     @Override
-    @Transactional
     public Optional<List<CategoryDTO>> saveCategory(List<CategoryDTO> categoryDTOS) {
 
         if (!categoryDTOS.isEmpty()) {
 
             for (CategoryDTO categoryDTO : categoryDTOS) {
 
-                Optional<Category> existingCategory = categoryRepository.findByCategoryId(categoryDTO.getCategoryId());
+                saveCategoryAndChildCategories(categoryDTO);
 
-                if (existingCategory.isPresent()) {
-                    // throw duplicate exception
-                } else {
+                if (categoryDTO.getChildren().size() != 0) {
 
-                    CategoryAndMappingList categoryAndMappingList = createCategory(categoryDTO);
-
-                    categoryRepository.saveAndFlush(categoryAndMappingList.getCategory());
-                    categoryMappingRepository.saveAndFlush(categoryAndMappingList.getCategoryMappings());
+                    for (CategoryDTO dto : categoryDTO.getChildren()) {
+                        saveCategoryAndChildCategories(dto);
+                    }
                 }
             }
         } else {
@@ -53,69 +50,108 @@ public class CategoryServiceImpl implements CategoryService {
         return Optional.ofNullable(categoryDTOS);
     }
 
+    @Transactional
+    private void saveCategoryAndChildCategories(CategoryDTO categoryDTO) {
+        Optional<Category> existingCategory = categoryRepository.findByCategoryId(categoryDTO.getCategoryId());
+
+        if (existingCategory.isPresent()) {
+            // throw duplicate exception
+        } else {
+
+            CategoryAndMappingList categoryAndMappingList = createCategory(categoryDTO);
+
+            categoryRepository.saveAndFlush(categoryAndMappingList.getCategory());
+            categoryMappingRepository.saveAndFlush(categoryAndMappingList.getCategoryMappings());
+        }
+    }
+
     @Override
     // caching
     public Optional<List<CategoryDTO>> getCategories() {
 
-        // Get all Category data
-        List<Category> categories = categoryRepository.findAll();
+        // fetches all data with their child details
+        Optional<List<Object[]>> categoryAndMappingDTOS = categoryMappingRepository.getCategoryAndMappingDTOs();
 
-        // creating a map from categories table where key = category_id and value = category object
-        Map<Long, Category> categoryMap = categories.stream().collect(Collectors.toMap(Category::getCategoryId, Function.identity()));
+        List<CategoryAndMappingDTO> categoryAndMappingDTOList = new ArrayList<>();
 
-        // get all category_mapping data
-        List<CategoryMapping> categoryMappings = categoryMappingRepository.findAll();
+        // converting and mapping above data into category table data
+        for (Object[] object : categoryAndMappingDTOS.get()) {
+            categoryAndMappingDTOList.add(createCategoryAndMappingDTO(object));
+        }
 
-        // create a map where key = category_id and value = List of child objects from category_mapping table
-        Map<Long, List<CategoryMapping>> categoryMappingMap = new HashMap<>();
+        List<Long> categoryIds = categoryAndMappingDTOList.stream().map(e -> e.getCategoryId()).collect(Collectors.toList());
 
-        // create a list of category mapping objects which would be the value for a specific category id
-        List<CategoryMapping> categoryMappingList = new ArrayList<>();
-        for (CategoryMapping categoryMapping : categoryMappings) {
+        Map<Long, List<CategoryAndMappingDTO>> categoryAndMappingMap = new HashMap<>();
+        List<CategoryAndMappingDTO> categoryMappingList = new ArrayList<>();
+        for (CategoryAndMappingDTO categoryAndMappingDTO : categoryAndMappingDTOList) {
             categoryMappingList = new ArrayList<>();
-            if (categoryMappingMap.containsKey(categoryMapping.getCategoryId())) {
-                categoryMappingMap.get(categoryMapping.getCategoryId()).add(categoryMapping);
-                categoryMappingList = categoryMappingMap.get(categoryMapping.getCategoryId());
-                categoryMappingMap.put(categoryMapping.getCategoryId(), categoryMappingList);
+            if (categoryAndMappingMap.containsKey(categoryAndMappingDTO.getCategoryId())) {
+                categoryAndMappingMap.get(categoryAndMappingDTO.getCategoryId()).add(categoryAndMappingDTO);
+                categoryMappingList = categoryAndMappingMap.get(categoryAndMappingDTO.getCategoryId());
+                categoryAndMappingMap.put(categoryAndMappingDTO.getCategoryId(), categoryMappingList);
             } else {
-                categoryMappingList.add(categoryMapping);
-                categoryMappingMap.put(categoryMapping.getCategoryId(), categoryMappingList);
+                categoryMappingList.add(categoryAndMappingDTO);
+                categoryAndMappingMap.put(categoryAndMappingDTO.getCategoryId(), categoryMappingList);
             }
         }
 
-        // this list has all parents with their children categories
-        List<CategoryDTO> categoryDTOS = new ArrayList<>();
+
+        CategoryDTO categoryDTO = new CategoryDTO();
+        for (Map.Entry<Long, List<CategoryAndMappingDTO>> entry : categoryAndMappingMap.entrySet()) {
+
+            for (int i=0; i< entry.getValue().size(); i++) {
+
+                if (categoryAndMappingMap.containsKey(entry.getValue().get(i).getChildId())){
+
+                    // convert List<categoryAndMappingDTO> to List<CategoryDTO>
+                    categoryDTO = convertCategoryAndMappingDTOtoCategoryDTO(categoryAndMappingMap.get(entry.getValue().get(i).getChildId()));
+                }
+            }
+
+        }
+
+
+        return Optional.ofNullable(null);
+    }
+
+    private CategoryDTO convertCategoryAndMappingDTOtoCategoryDTO(List<CategoryAndMappingDTO> categoryAndMappingDTOS) {
+
         Set<CategoryDTO> children = new HashSet<>();
         CategoryDTO categoryDTO = new CategoryDTO();
-        for (Category category : categories) {
-            children = new HashSet<>();
-            if (categoryMappingMap.containsKey(category.getCategoryId())) {
 
-                categoryDTO = new CategoryDTO();
-                categoryDTO.setCategoryId(category.getCategoryId());
-                categoryDTO.setCategoryName(category.getCategoryName());
+        for (CategoryAndMappingDTO categoryAndMappingDTO: categoryAndMappingDTOS) {
 
-                for (CategoryMapping categoryMapping : categoryMappingMap.get(category.getCategoryId())) {
-                    if (categoryMapping.getChildId() != null) {
-                        Category existingCategory = categoryMap.get(categoryMapping.getChildId());
-                        CategoryDTO categoryDto = new CategoryDTO();
-                        categoryDto.setCategoryName(existingCategory.getCategoryName());
-                        categoryDto.setCategoryId(existingCategory.getCategoryId());
+            categoryDTO.setId(categoryAndMappingDTO.getId());
+            categoryDTO.setCategoryId(categoryAndMappingDTO.getCategoryId());
+            categoryDTO.setCategoryName(categoryAndMappingDTO.getCategoryName());
+            categoryDTO.setChildId(categoryAndMappingDTO.getChildId());
+            categoryDTO.setParentId(categoryAndMappingDTO.getParentId());
+            //categoryDTO.setChildren(categoryAndMappingDTO.get);
 
-                        children.add(categoryDto);
-                    }
-                }
-                categoryDTO.setChildren(children);
-            }
-            categoryDTOS.add(categoryDTO);
+            children.add(categoryDTO);
         }
+        categoryDTO.setChildren(children);
 
-        // we should map children to parents
-        for (CategoryDTO dto : categoryDTOS) {
+        return categoryDTO;
+    }
 
-            // main logic
-        }
-        return Optional.of(categoryDTOS);
+    /***
+     * Creating CategoryAndMappingDTO object from category and mapping table
+     * @param object
+     * @return categoryAndMappingDTO
+     */
+    private CategoryAndMappingDTO createCategoryAndMappingDTO(Object[] object) {
+
+        CategoryAndMappingDTO categoryAndMappingDTO = new CategoryAndMappingDTO();
+
+        categoryAndMappingDTO.setId(object[0] == null ? null : Long.valueOf(object[0].toString()));
+        categoryAndMappingDTO.setCategoryId(object[1] == null ? null : Long.valueOf(object[1].toString()));
+        categoryAndMappingDTO.setCategoryName(object[2] == null ? null : object[2].toString());
+        categoryAndMappingDTO.setChildId(object[3] == null ? null : Long.valueOf(object[3].toString()));
+        categoryAndMappingDTO.setChildName(object[4] == null ? null : object[4].toString());
+        categoryAndMappingDTO.setParentId(object[5] == null ? null : Long.valueOf(object[5].toString()));
+
+        return categoryAndMappingDTO;
     }
 
     @Override
@@ -209,7 +245,7 @@ public class CategoryServiceImpl implements CategoryService {
 
             // deletes the data from category table
             categoryRepository.deleteById(category.get().getId());
-        }else{
+        } else {
             // throw exception
         }
     }

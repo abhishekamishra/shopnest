@@ -11,6 +11,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
+/***
+ * Controller class for Category Entity
+ * @author ABHISHEKA
+ * @version 1.0
+ */
 @RestController
 @RequestMapping("/category")
 public class CategoryController {
@@ -18,30 +23,55 @@ public class CategoryController {
     @Autowired
     private CategoryService categoryService;
 
-    @GetMapping("/getCategories")
+    /***
+     * Fetch all categories details from database
+     * @return ResponseEntity
+     */
+    @GetMapping("/v1/get-categories")
     public ResponseEntity getCategories() {
 
-        Optional<List<CategoryDTO>> categoryDTOs = categoryService.getCategories();
+        ResponseEntity responseEntity = null;
 
-        if (categoryDTOs.isPresent()) {
-            return ResponseEntity.status(HttpStatus.OK).body(categoryDTOs.get());
-        } else {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("success");
+        try {
+            Optional<List<CategoryDTO>> categoryDTOs = categoryService.getCategories();
+
+            if (categoryDTOs.isPresent()) {
+                responseEntity = ResponseEntity.status(HttpStatus.OK).body(categoryDTOs.get());
+            } else {
+                responseEntity = ResponseEntity.status(HttpStatus.NOT_FOUND).body("success");
+            }
+        } catch (Exception exception) {
         }
+
+        return responseEntity;
     }
 
-    @PostMapping("/saveCategory")
+    /***
+     * Saves all categories details to the database
+     * @return ResponseEntity
+     */
+    @PostMapping("/v1/save-categories")
     public ResponseEntity saveCategory(@RequestBody List<CategoryDTO> categoryDTOS) {
 
-        Optional<List<CategoryDTO>> categoryDTO = categoryService.saveCategory(categoryDTOS);
+        ResponseEntity responseEntity = null;
+
+        try {
+            Optional<List<CategoryDTO>> categoryDTO = categoryService.saveCategory(categoryDTOS);
         /*
             Check duplicate entries
             409 status code
          */
-        return ResponseEntity.status(HttpStatus.CREATED).body(categoryDTO.isPresent() ? categoryDTO.get() : "No data saved");
+            responseEntity = ResponseEntity.status(HttpStatus.CREATED).body(categoryDTO.isPresent() ? categoryDTO.get() : "No data saved");
+        } catch (Exception exception) {
+        }
+        return null;
     }
 
-    @PutMapping("/updateCategory")
+    /***
+     * Update the category details with the existing category value along with all the references (parent and child)
+     * @return ResponseEntity
+     */
+    @PutMapping("/v1/update-category")
     public ResponseEntity updateCategory(@RequestBody CategoryDTO categoryDTO) {
 
         ResponseEntity responseEntity = null;
@@ -61,7 +91,11 @@ public class CategoryController {
         return responseEntity;
     }
 
-    @DeleteMapping("/deleteCategory/{categoryId}")
+    /***
+     * Deletes the category and it's references from database
+     * @return ResponseEntity
+     */
+    @DeleteMapping("/v1/delete-category/{categoryId}")
     public ResponseEntity deleteCategory(@PathVariable Long categoryId) {
 
         try {
